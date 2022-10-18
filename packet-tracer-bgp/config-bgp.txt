@@ -1,0 +1,27 @@
+#Comandos antes de configurar a rede:
+- enable
+- configure terminal
+
+
+# Rede 1
+router bgp 100
+network 189.155.23.0 mask 255.255.255.128
+neighbor 192.168.0.2 remote-as 200
+neighbor 192.168.0.3 remote-as 300
+
+# Rede 2
+router bgp 200
+network 128.104.12.0 mask 255.255.240.0
+neighbor 192.168.0.1 remote-as 100
+neighbor 192.168.0.3 remote-as 300
+
+# Rede 3
+router bgp 300
+network 133.19.235.0 mask 255.255.255.192
+neighbor 192.168.0.1 remote-as 100
+neighbor 192.168.0.2 remote-as 200
+
+
+# Após a configuração:
+exit
+do write
