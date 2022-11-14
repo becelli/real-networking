@@ -1,39 +1,68 @@
 import socket
-from crc_calculator import CRC32
+from utils import mod2div, key, binary_to_string
+
 
 class Server:
-    def __init__(self, host, port):
-        self.host = host
-        self.port = port
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind((self.host, self.port))
+    def __init__(self: object, host: str, port: int) -> None:
+        # Cria um Socket UDP e o associa a um endereço e porta
+        self.host: str = host
+        self.port: int = port
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.bind((self.host, self.port))
+        # Define a chave de verificação
+        self.key = key
 
-    def recv(self):
-        return self.sock.recvfrom(1024)
+    def verify(self: object, msg: str) -> bool:
+        # Verifica se a mensagem recebida é válida
+        key_length: int = len(self.key)
+        padding: str = '0' * (key_length - 1)
+        data_key: str = msg + padding
+        # Calcula o resto da divisão
+        remainder: str = mod2div(data_key, self.key)
+        # Verifica se o resto é 0
+        return remainder == '0' * (key_length - 1)
 
-    def send(self, data, addr):
-        self.sock.sendto(data, addr)
+    def decode(self: object, msg: str) -> str:
+        # Decodifica a mensagem recebida
+        key_length: int = len(self.key)
+        padding: str = '0' * (key_length - 1)
+        data_key: str = msg + padding
+        # Calcula o resto da divisão
+        remainder: str = mod2div(data_key, self.key)
+        message_without_padding: str = msg[:-len(remainder)]
+        # Converte a mensagem para string
+        message = binary_to_string(message_without_padding)
+        return message
 
-    def close(self):
-        self.sock.close()
+    def receive(self) -> str:
+        # Recebe a mensagem do cliente
+        data, _ = self.socket.recvfrom(1024)
+        return data.decode()
 
-    def __del__(self):
-        self.close()
+    def run(self) -> None:
+        # Executa o servidor
+        try:
+            while True:
+                # Recebe a mensagem do cliente
+                message: str = self.receive()
 
-def main():
-    server = Server('localhost', 5000)
-    try:
-      while True:
-          data, addr = server.recv()
-          print("Received: {}".format(data))
-          crc = CRC32(binary=data)
-          is_valid = crc.validate()
-          server.send(str(is_valid).encode(), addr)
-          print("Sent: {}".format(is_valid))    
-    except KeyboardInterrupt:
-      server.close()
-      exit(0)
+                # Verifica se a mensagem é válida
+                if self.verify(message):
+                    print("Mensagem transmitida sem erros")
+                else:
+                    print("Mensagem transmitida com erros")
 
-if __name__ == '__main__':
-    main()
-    
+                # Decodifica a mensagem
+                decoded = self.decode(message)
+                print(f"Recebido: {decoded}")
+
+        except KeyboardInterrupt:
+            print("Server stopped")
+            self.socket.close()
+
+
+if __name__ == "__main__":
+    host = '127.0.0.1'
+    port = 5000
+    server = Server(host, port)
+    server.run()
